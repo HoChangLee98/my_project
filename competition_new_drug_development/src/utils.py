@@ -1,8 +1,14 @@
+import os
 import pandas as pd
+import numpy as np
 from typing import Tuple
 
 import pickle
+import random
+from datetime import datetime
 from sklearn.metrics import mean_squared_error
+
+
 
 def dataloader(target_name:str=None, folder_path:str=None)->tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
     '''데이터를 불러오고 train set의 X값과 y값을 분리해주며 test set의 X값을 돌려주는 함수
@@ -30,12 +36,22 @@ def dataloader(target_name:str=None, folder_path:str=None)->tuple[pd.DataFrame, 
         return X_train, y_train_MLM, y_train_HLM, test
 
 
-def root_mean_square_error(y_true, y_pred):
-    rmse = mean_squared_error(y_true=y_true, y_pred=y_pred, squared=False)
+def load_pickle(file_name, save_path:str="./pickles"):
+    with open(f"{save_path}/{file_name}.pkl", "rb") as f:
+        file = pickle.load(f)        
 
-    return rmse
+    return file
 
 
-def save_model_params(model:object):
-    with open(f"./pickles/model_params.pkl", "wb") as f:
-        pickle.dump(model, f)
+def save_pickle(file, file_name, save_path:str="./pickles"):
+    # settime = datetime.now().strftime("%y%m%d%H%M%S")
+    # file_name = f"{file_name}_{settime}.pkl"
+
+    with open(f"{save_path}/{file_name}", "wb") as f:
+        pickle.dump(file, f)        
+
+
+def seed_everything(seed: int = 0):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
