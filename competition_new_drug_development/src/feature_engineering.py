@@ -4,13 +4,11 @@ import numpy as np
 
 
 class FeatureEngineer:
-    def __init__(self, X_train, X_test):
+    def __init__(self, X_train=None, X_test=None):
         self.X_train = X_train
         self.X_test = X_test
 
-    def drop_cat_feature(self):
-        X_train_drop = self.X_train.drop(colums="SMILES")
-        X_test_drop = self.X_test.drop(colums="SMILES")
-
-        return X_train_drop, X_test_drop
+    def drop_cat_feature(self, df):
+        df_drop = df.drop(columns="SMILES")
         
+        return df_drop        
