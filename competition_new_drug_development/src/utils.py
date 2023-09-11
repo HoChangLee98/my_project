@@ -21,6 +21,7 @@ def dataloader(target_name:str=None, folder_path:str=None)->tuple[pd.DataFrame, 
         y_valid = pd.read_csv(f"../data/y_valid_{target_name}.csv")
         
         test = pd.read_csv("../data/test.csv")
+        test = test.drop(columns="id")
 
         return X_train, X_valid, y_train, y_valid, test
 
@@ -47,7 +48,7 @@ def save_pickle(file, file_name, save_path:str="./pickles"):
     # settime = datetime.now().strftime("%y%m%d%H%M%S")
     # file_name = f"{file_name}_{settime}.pkl"
 
-    with open(f"{save_path}/{file_name}", "wb") as f:
+    with open(f"{save_path}/{file_name}.pkl", "wb") as f:
         pickle.dump(file, f)        
 
 
@@ -55,3 +56,4 @@ def seed_everything(seed: int = 0):
     random.seed(seed)
     np.random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
+
