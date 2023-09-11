@@ -4,9 +4,6 @@ from utils import *
 from feature_engineering import *
 from model import *
 
-import lightgbm
-from lightgbm import LGBMRegressor
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--target_name", "-t", type=str, help="train model about target name")
@@ -25,7 +22,9 @@ def main(args):
 
         ## feature engineering
         fe = FeatureEngineer(X_train=X_train, X_test=X_valid)
-        X_train, X_valid = fe.drop_cat_feature()
+        X_train = fe.drop_cat_feature(X_train)
+        X_valid = fe.drop_cat_feature(X_valid)
+
  
         print(f"=====Start {args.target_name} Optuna=====")
 
@@ -43,16 +42,17 @@ def main(args):
 
         ## feature engineering
         fe = FeatureEngineer(X_train=X_train, X_test=X_valid)
-        X_train, X_valid = fe.drop_cat_feature()
+        X_train = fe.drop_cat_feature(X_train)
+        X_valid = fe.drop_cat_feature(X_valid)
 
         ## modeling
         base_params = load_pickle(f"{args.target_name}_{args.model_name}_base_params")
         model = Models(model_name=args.model_name, params = base_params)
-        model.fit(X_train, y_train)
-        y_val_pred = model.predict(X_valid, y_valid)
+        fitted_model = model.fit(X_train, y_train)
+        y_val_pred = fitted_model.predict(X_valid)
         rmse = mean_squared_error(y_valid, y_val_pred, squared=False)
 
-        save_pickle(model, f"{args.target_name}_{args.model_name}")
+        save_pickle(fitted_model, f"{args.target_name}_{args.model_name}")
 
         print(f"rmse of {args.target_name} : ", rmse)
         print(f"=====End {args.target_name} Training=====")
