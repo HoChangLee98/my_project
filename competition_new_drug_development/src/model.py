@@ -46,6 +46,7 @@ def get_optuna_params(
                 "seed" : trial.suggest_int("seed", 0, 5000),
                 "max_depth" : trial.suggest_int("max_depth", 0, 10),
                 # "early_stopping_round" : 100
+                "verbose" : 0
             }
 
             model = Models(model_name=model_name, params=params)
