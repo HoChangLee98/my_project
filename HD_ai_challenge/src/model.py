@@ -108,7 +108,8 @@ class OptunaProcessor:
             'lambda_l1' : trial.suggest_loguniform('lambda_l1', 0.0001, 10),
             'lambda_l2' : trial.suggest_loguniform('lambda_l2', 0.0001, 10),
             # 'categorical_feature' : self.categorical_feature,
-            'metric' : 'mape',     
+            'objective' : 'regression_l1',
+            'metric' : 'l1'     
         }
         
         # 학습 모델 생성
