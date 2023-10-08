@@ -48,3 +48,14 @@ def load_pickle(file_name:str, path:str):
         file = pickle.load(f)
 
     return file
+
+def generate_submission_file(y_pred_none_zero, none_zero_index, file_name:str, path:str):
+    
+    os.makedirs(f"{path}", exist_ok=True)
+    submission = pd.read_csv("../submission/sample_submission.csv")
+    submission['CI_HOUR'] = 0
+    submission.loc[none_zero_index, 'CI_HOUR'] = y_pred_none_zero
+    submission.to_csv(f"{path}/{file_name}.csv", index=False) 
+    
+    print(submission)
+    print("Done Generating Submission!")
