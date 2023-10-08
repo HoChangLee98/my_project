@@ -11,9 +11,8 @@ class PreProcessor:
         self.categorical_feature = categorical_feature
         self.minmaxscale_feature = minmaxscale_feature
 
-
-    def preprocess(self, df, drop:bool=None):
-        df = self.nan_process(df, drop=drop)    
+    def preprocess(self, df, method:str='mean', mean_values=None):
+        df = self.nan_process(df, method=method, mean_values=mean_values)    
         df = self.date_process(df)
         
         return df
@@ -24,7 +23,7 @@ class PreProcessor:
 
         return df
 
-    def nan_process(self, df, drop:bool=True):
+    def nan_process(self, df, mean_values, method:str='mean'):
         '''결측치를 처리하는 함수
 
         Args:
@@ -33,11 +32,18 @@ class PreProcessor:
                 False일 경우 결측치 대체
         '''
     
-        if drop:
+        if method == 'drop':
             df = df.drop(columns=['U_WIND', 'V_WIND', 'AIR_TEMPERATURE', 'BN'])
             df = df.dropna(axis=0)
+        elif method == 'mean':
+            df[['BREADTH', 'DEPTH', 'DRAUGHT', 'LENGTH', 'U_WIND', 'V_WIND', 'AIR_TEMPERATURE', 'BN']] = df[['BREADTH', 'DEPTH', 'DRAUGHT', 'LENGTH', 'U_WIND', 'V_WIND', 'AIR_TEMPERATURE', 'BN']].fillna(mean_values)            
     
         return df
+    
+    def nan_mean_fit(self, df):
+        nan_replace_mean = df[['BREADTH', 'DEPTH', 'DRAUGHT', 'LENGTH', 'U_WIND', 'V_WIND', 'AIR_TEMPERATURE', 'BN']].apply(lambda x : np.mean(x))
+
+        return nan_replace_mean
         
 
     def categorical_process_fit(self, df):
