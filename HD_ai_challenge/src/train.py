@@ -44,14 +44,21 @@ def train(args):
     train_none_zero_index = output_index(classifier=classifier, df=X_train)
     valid_none_zero_index = output_index(classifier=classifier, df=X_valid)
 
+    if args.log_transform:
+        y_train_transform = np.log1p(y_train)
+        y_valid_transform = np.log1p(y_valid)
+    else: 
+        y_train_transform = y_train.copy()
+        y_valid_transform = y_valid.copy()        
+
     ## progress optuna
     if args.mode == 'optuna':
         print("     Strat Optuna!")
         optuna = OptunaProcessor(
             X_train=X_train.loc[train_none_zero_index,:], 
-            y_train=y_train.loc[train_none_zero_index], 
+            y_train=y_train_transform.loc[train_none_zero_index], 
             X_valid=X_valid.loc[valid_none_zero_index,:], 
-            y_valid=y_valid.loc[valid_none_zero_index], 
+            y_valid=y_valid_transform.loc[valid_none_zero_index], 
             categorical_feature=categorical_feature
             )
         optuna_process = optuna.run_optuna(n_trials=args.n_trials, model_name=args.regression_model_name)
@@ -68,19 +75,23 @@ def train(args):
         model_params=best_optuna_params, 
         categorical_feature=categorical_feature, 
         X_train=X_train.loc[train_none_zero_index,:], 
-        y_train=y_train.loc[train_none_zero_index], 
+        y_train=y_train_transform.loc[train_none_zero_index], 
         X_valid=X_valid.loc[valid_none_zero_index,:], 
-        y_valid=y_valid.loc[valid_none_zero_index], 
+        y_valid=y_valid_transform.loc[valid_none_zero_index], 
         model_name=args.regression_model_name
         )
      
     model = model.fit()
     
     save_pickle(file=model, file_name=args.regression_model_name, path=f"{args.pickle_path}/{args.version}/{args.method}/regressor")
-
+    
     y_valid_pred = y_valid.copy()
     y_valid_pred['CI_HOUR'] = 0
     y_valid_pred.loc[valid_none_zero_index] = model.predict(X_valid.loc[valid_none_zero_index,:])
+
+    if args.log_transform:
+        y_valid_pred = np.expm1(y_valid_pred)
+
     mae = mean_absolute_error(y_true=y_valid, y_pred=y_valid_pred)
     
     print("Classification Model Name : ", args.classification_model_name)
@@ -93,6 +104,7 @@ if __name__ == "__main__":
     parser.add_argument("--version", "-v", type=str, default="test_version", help="version number")
     parser.add_argument("--method", "-md", type=str, default="test_method", help="describe method")
     parser.add_argument("--classification_model_name", "-cm", type=str, default="lightgbm", help="select classification model")
+    parser.add_argument("--log_transform", "-l", type=bool, default=False, help="boolean of log transform")
     parser.add_argument("--mode", "-m", type=str, default="", help="progress optuna")
     parser.add_argument("--n_trials", "-n", type=int, default=2, help="set number of trials")
     parser.add_argument("--regression_model_name", "-rm", type=str, default="lightgbm", help="select regression model")

@@ -25,7 +25,10 @@ def inference(args):
     ## Regression Model
     model = load_pickle(file_name=args.regression_model_name, path=f"{args.pickle_path}/{args.version}/{args.method}/regressor")
     y_pred_none_zero = model.predict(X_test.loc[none_zero_index,:])
-
+    
+    if args.log_transform:
+        y_pred_none_zero = np.expm1(y_pred_none_zero)
+    
     generate_submission_file(
         y_pred_none_zero=y_pred_none_zero, 
         none_zero_index=none_zero_index,
@@ -39,6 +42,7 @@ if __name__ == "__main__":
     parser.add_argument("--pickle_path", "-pp", type=str, default="../pickle", help="path of pickle folder")
     parser.add_argument("--version", "-v", type=str, default="test_version", help="version number")
     parser.add_argument("--method", "-md", type=str, default="test_method", help="describe method")
+    parser.add_argument("--log_transform", "-l", type=bool, default=False, help="boolean of log transform")
     parser.add_argument("--classification_model_name", "-cm", type=str, default="lightgbm", help="select classification model")    
     parser.add_argument("--regression_model_name", "-rm", type=str, default="lightgbm", help="select regression model")
     args = parser.parse_args()
