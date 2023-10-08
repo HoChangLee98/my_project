@@ -2,8 +2,16 @@ import warnings
 warnings.filterwarnings(action='ignore')
 
 import pandas as pd
+
+from sklearn.linear_model import LogisticRegression
+from lightgbm import LGBMClassifier
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+
 import lightgbm as lgb
+from lightgbm import LGBMRegressor
 from sklearn.ensemble import RandomForestRegressor
+from catboost import CatBoostRegressor
+from xgboost.sklearn import XGBRegressor
 
 import optuna
 from optuna import Trial
@@ -11,16 +19,71 @@ from optuna.samplers import TPESampler
 from sklearn.metrics import mean_absolute_error
 
 
-class Model:
+class ClassificationModel:
+    def __init__(
+        self, 
+        X_train:pd.DataFrame=None, 
+        y_train:pd.Series=None,
+        X_valid:pd.DataFrame=None, 
+        y_valid:pd.Series=None,
+        classifier_name:str=None,
+        # classifier_params:dict=None
+        ):
+        self.X_train = X_train
+        self.y_train_binary = y_train["CI_HOUR"].apply(lambda x : 1 if x != 0 else x).astype('int')
+        self.X_valid = X_valid 
+        self.y_valid_binary = y_valid["CI_HOUR"].apply(lambda x : 1 if x != 0 else x).astype('int')
+        self.classifier_name = classifier_name
+        # self.classifier_params = self.classifier_params
+        
+    def fit(self):
+        if self.classifier_name == "logistic":
+            classifier = LogisticRegression(
+                random_state=0, 
+                class_weight='balanced', 
+                max_iter=100, 
+                multi_class='ovr', 
+                verbose=0
+                )
+
+        elif self.classifier_name == "lightgbm":
+            classifier = LGBMClassifier(
+                force_col_wise=True,
+                objective='binary',
+                class_weight='balanced',
+                is_unbalance=True,
+                seed=0
+                )
+            
+        classifier.fit(self.X_train, self.y_train_binary)
+        y_pred_binary = classifier.predict(self.X_valid)
+        print(f"    ##{self.classifier_name}##")
+        print("accuracy : ", accuracy_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
+        print("f1 : ", f1_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
+        print("precision : ", precision_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
+        print("recall : ", recall_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
+        
+        return classifier
+    
+def output_index(classifier:object, df:pd.Series):
+    binary_target_pred = pd.Series(classifier.predict(df))
+    print("Length of None Zero Target : ", sum(binary_target_pred))
+    
+    none_zero_index = binary_target_pred.loc[binary_target_pred != 0].index
+    
+    return none_zero_index       
+    
+
+class RegressionModel:
     def __init__(
             self, 
             model_params:dict,
             categorical_feature:list,
             X_train:pd.DataFrame,
             y_train:pd.Series,
+            model_name:str,
             X_valid:pd.DataFrame=None,
             y_valid:pd.Series=None,
-            model_name:str='lgboost'
             ):
         self.model_params = model_params
         self.categorical_feature = categorical_feature
@@ -32,42 +95,84 @@ class Model:
 
     
     def fit(self):
-        if self.model_name == 'lgboost':
+        if self.model_name == 'lightgbm':
             model = self.lgboost_fit()
 
-        if self.model_name == 'randomforest':
+        elif self.model_name == 'randomforest':
             model = self.randomforest_fit()
+        
+        elif self.model_name == 'catboost':
+            model = self.catboost_fit()
+        
+        elif self.model_name == 'xgboost':
+            model = self.xgboost_fit()
 
         return model
     
 
-    def lgboost_fit(self):
-        train_data = lgb.Dataset(
-            data=self.X_train, 
-            label=self.y_train, 
-            categorical_feature=self.categorical_feature,
-            params={'verbose': -1}
+    def lightgbm_fit(self):
+
+        model = lgb.LGBMRegressor(
+            **self.model_params, 
+            seed = 0,
+            force_col_wise = True,
+            objective = 'regression_l1',
+            metric = 'l1', 
+            verbose = -1, 
+            early_stopping_rounds=100, 
+            categorical_feature = self.categorical_feature,                             
             )
         
-        valid_data = lgb.Dataset(
-            data=self.X_valid,
-            label=self.y_valid,
-            categorical_feature=self.categorical_feature,
-            params={'verbose': -1}
+        model = model.fit(
+            self.X_train, 
+            self.y_train, 
+            eval_set=[(self.X_valid, self.y_valid)], 
             )
-        
-        params = self.model_params
-
-        model = lgb.train(params, train_data, valid_sets=[valid_data])
-
+                           
         return model
     
     def randomforest_fit(self):
-        model = RandomForestRegressor(**self.model_params)
+        model = RandomForestRegressor(
+            **self.model_params, 
+            criterion = "absolute_error",
+            random_state = 0,
+            verbose = False,
+            )
         model = model.fit(X=self.X_train, y=self.y_train)
 
         return model
 
+    def catboost_fit(self):
+        model = CatBoostRegressor(**self.model_params)
+        model = model.fit(X=self.X_train, y=self.y_train, 
+                          eval_set=(self.X_valid, self.y_valid), 
+                          cat_features=self.categorical_feature, 
+                          use_best_model=True, 
+                          verbose=False, 
+                          verbose_eval=False, 
+                          early_stopping_rounds=100)
+        return model
+
+    def xgboost_fit(self):        
+        model = XGBRegressor(
+            **self.model_params, 
+            verbosity = 0,
+            objective = 'reg:absoluteerror', 
+            eval_metric = 'mae', 
+            seed = 0, 
+            enable_categorical = True,
+            tree_method = 'hist'
+            )
+        
+        model = model.fit(
+            self.X_train, 
+            self.y_train, 
+            eval_set=[(self.X_valid, self.y_valid), (self.X_train, self.y_train)], 
+            verbose=False, 
+            early_stopping_rounds=100,
+            )
+        
+        return model
 
 class OptunaProcessor:
     def __init__(
@@ -87,48 +192,43 @@ class OptunaProcessor:
 
     def run_optuna(self, n_trials:int, model_name:str):
         study = optuna.create_study(direction='minimize', sampler=TPESampler())
-        if model_name == 'lgboost':
+        if model_name == 'lightgbm':
             study.optimize(lambda trial : self.objective_lgboost(trial), n_trials=n_trials)
         elif model_name == 'randomforest':
             study.optimize(lambda trial : self.objective_randomforest(trial), n_trials=n_trials)
+        elif model_name == 'catboost':
+            study.optimize(lambda trial : self.objective_catboost(trial), n_trials=n_trials)
+        elif model_name == 'xgboost':
+            study.optimize(lambda trial : self.objective_xgboost(trial), n_trials=n_trials)
 
         return study
 
-    def objective_lgboost(self, trial: Trial):
+    def objective_lightgbm(self, trial: Trial):
         params = {
             'num_iteration' : trial.suggest_int('num_iteration', 100, 1000),
-            'learning_rate' : trial.suggest_loguniform('learning_rate', 0.0001, 0.1),
+            'learning_rate' : trial.suggest_loguniform('learning_rate', 0.03, 0.9),
             'num_leaves' : trial.suggest_int('num_leaves', 2, 100),
             # 'nthread' : -1,
             'seed' : 0,
             'force_col_wise' : True,
-            'max_depth' : trial.suggest_int('max_depth', 3, 50),
+            'max_depth' : trial.suggest_int('max_depth', 1, 10),
             'min_data_in_leaf' : trial.suggest_int('min_data_in_leaf', 1, 300),
             'early_stopping_round' : 100,
             'lambda_l1' : trial.suggest_loguniform('lambda_l1', 0.0001, 10),
             'lambda_l2' : trial.suggest_loguniform('lambda_l2', 0.0001, 10),
-            # 'categorical_feature' : self.categorical_feature,
+            'categorical_feature' : self.categorical_feature,
             'objective' : 'regression_l1',
-            'metric' : 'l1'     
+            'metric' : 'l1', 
+            'verbose' : -1     
         }
-        
-        # 학습 모델 생성
-        train_data = lgb.Dataset(
-            data=self.X_train, 
-            label=self.y_train, 
-            categorical_feature=self.categorical_feature,
-            params={'verbose': -1}
+                
+        model = lgb.LGBMRegressor(**params)
+        model = model.fit(
+            self.X_train, 
+            self.y_train, 
+            eval_set=[(self.X_valid, self.y_valid)], 
             )
-
-        valid_data = lgb.Dataset(
-            data=self.X_valid,
-            label=self.y_valid,
-            categorical_feature=self.categorical_feature,
-            params={'verbose': -1}
-            )
-        
-        model = lgb.train(params, train_data, valid_sets=[valid_data])
-        
+                
         # 모델 성능 확인
         score = mean_absolute_error(model.predict(self.X_valid), self.y_valid)
         
@@ -138,17 +238,83 @@ class OptunaProcessor:
         params = {
             'n_estimators' : trial.suggest_int('n_estimators', 100, 1000),
             'criterion' : "absolute_error",
-            'max_depth' : trial.suggest_int('max_depth', 3, 30), 
+            'max_depth' : trial.suggest_int('max_depth', 1, 10), 
             'min_samples_split' : trial.suggest_int('min_samples_split', 2, 30), 
             'min_samples_leaf' : trial.suggest_int('min_samples_leaf', 1, 30),
             'random_state' : 0,
             'verbose' : False,
             'max_samples' : trial.suggest_int('max_samples', 3, 100)
         }
-
+                    
         model = RandomForestRegressor(**params)
         model.fit(self.X_train, self.y_train)
 
+        score = mean_absolute_error(model.predict(self.X_valid), self.y_valid)
+
+        return score
+    
+    def objective_catboost(self, trial: Trial):
+        params = {
+            'one_hot_max_size' : 20, 
+            'iterations' : trial.suggest_int('iterations', 100, 1000),
+            # 'use-best-model' : True, 
+            'eval_metric' : 'MAE', 
+            'learning_rate' : trial.suggest_loguniform('learning_rate', 0.0001, 0.1),
+            'depth' : trial.suggest_int('depth', 3, 16), 
+            'l2_leaf_reg' : trial.suggest_float('l2_leaf_reg', 0.0, 1.0),
+            'min_data_in_leaf' : trial.suggest_int('min_data_in_leaf', 1, 60), 
+            # 'max_leaves' : trial.suggest_int('max_leaves', 1, 60), 
+        }
+
+        model = CatBoostRegressor(**params)
+        model = model.fit(X=self.X_train, y=self.y_train, 
+                          eval_set=(self.X_valid, self.y_valid), 
+                          cat_features=self.categorical_feature, 
+                          use_best_model=True, 
+                          verbose=False, 
+                        #   verbose_eval=False, 
+                          early_stopping_rounds=100)        
+    
+    def objective_xgboost(self, trial: Trial):
+        params = {
+            # 'num_boost_round' : trial.suggest_int('num_boost_round', 100, 1000), 
+            # 'booster' : 'gblinear', 
+            'verbosity' : 0,
+            'eta' : trial.suggest_loguniform('eta', 0.03, 0.9),
+            'gamma' : trial.suggest_int('gamma', 0, 1000), 
+            'max_depth' : trial.suggest_int('max_depth', 1, 10), 
+            'min_child_weight' : trial.suggest_int('min_child_weight', 0, 100), 
+            'max_delta_step' : trial.suggest_int('max_delta_step', 1, 10), 
+            'subsample' : trial.suggest_loguniform('subsample', 0.03, 0.5), 
+            'colsample_bytree' : trial.suggest_loguniform('colsample_bytree', 0.0001, 1), 
+            # 'colsample_bylevel' : trial.suggest_loguniform('colsample_bylevel', 0.0001, 1), 
+            # 'colsample_bynode' : trial.suggest_loguniform('colsample_bynode', 0.0001, 1),   
+            'lambda' : trial.suggest_float('lambda', 0.0, 10.0),
+            'alpha' : trial.suggest_float('alpha', 0.0, 10.0),
+            # 'num_parallel_tree' : trial.suggest_int('num_parallel_tree', 2, 100), 
+            'max_cat_to_onehot' : trial.suggest_int('max_cat_to_onehot', 1, 10), 
+            'objective' : 'reg:absoluteerror', 
+            'eval_metric' : 'mae', 
+            'seed' : 0, 
+            'num_round' : trial.suggest_int('num_round', 100, 1000), 
+            'n_estimaters' : trial.suggest_int('n_estimaters', 100, 1000), 
+            'enable_categorical' : True,
+            'tree_method' : 'hist'
+         }
+
+        # features = self.X_train.columns.tolist()
+        # train_data = pd.concat([self.X_train, self.y_train], axis=1)
+        # valid_data = pd.concat([self.X_valid, self.y_valid], axis=1)
+        
+        model = XGBRegressor(**params)
+        model = model.fit(
+            self.X_train, 
+            self.y_train, 
+            eval_set=[(self.X_valid, self.y_valid), (self.X_train, self.y_train)], 
+            verbose=False, 
+            early_stopping_rounds=100, 
+            )
+        
         score = mean_absolute_error(model.predict(self.X_valid), self.y_valid)
 
         return score
