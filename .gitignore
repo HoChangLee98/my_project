@@ -173,6 +173,11 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+*.json
+*.tsv
+*.tfevents
+*.tmp
+
 # pickles
-.pkl
+*.pkl
 # End of https://www.toptal.com/developers/gitignore/api/python
