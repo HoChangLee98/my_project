@@ -96,7 +96,7 @@ class RegressionModel:
     
     def fit(self):
         if self.model_name == 'lightgbm':
-            model = self.lgboost_fit()
+            model = self.lightgbm_fit()
 
         elif self.model_name == 'randomforest':
             model = self.randomforest_fit()
@@ -193,7 +193,7 @@ class OptunaProcessor:
     def run_optuna(self, n_trials:int, model_name:str):
         study = optuna.create_study(direction='minimize', sampler=TPESampler())
         if model_name == 'lightgbm':
-            study.optimize(lambda trial : self.objective_lgboost(trial), n_trials=n_trials)
+            study.optimize(lambda trial : self.objective_lightgbm(trial), n_trials=n_trials)
         elif model_name == 'randomforest':
             study.optimize(lambda trial : self.objective_randomforest(trial), n_trials=n_trials)
         elif model_name == 'catboost':

@@ -80,7 +80,6 @@ def train(args):
 
     y_valid_pred = y_valid.copy()
     y_valid_pred['CI_HOUR'] = 0
-    print(y_valid_pred)
     y_valid_pred.loc[valid_none_zero_index] = model.predict(X_valid.loc[valid_none_zero_index,:])
     mae = mean_absolute_error(y_true=y_valid, y_pred=y_valid_pred)
     
