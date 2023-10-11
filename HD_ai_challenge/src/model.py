@@ -7,6 +7,8 @@ from sklearn.linear_model import LogisticRegression
 from lightgbm import LGBMClassifier
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
+from utils import after_process
+
 import lightgbm as lgb
 from lightgbm import LGBMRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -37,41 +39,43 @@ class ClassificationModel:
         # self.classifier_params = self.classifier_params
         
     def fit(self):
-        if self.classifier_name == "logistic":
-            classifier = LogisticRegression(
-                random_state=0, 
-                class_weight='balanced', 
-                max_iter=100, 
-                multi_class='ovr', 
-                verbose=0
-                )
+        if self.classifier_name is not None:
+            if self.classifier_name == "logistic":
+                cls = LogisticRegression(
+                    random_state=0, 
+                    class_weight='balanced', 
+                    max_iter=100, 
+                    multi_class='ovr', 
+                    verbose=0
+                    )
 
-        elif self.classifier_name == "lightgbm":
-            classifier = LGBMClassifier(
-                force_col_wise=True,
-                objective='binary',
-                class_weight='balanced',
-                is_unbalance=True,
-                seed=0
-                )
+            elif self.classifier_name == "lightgbm":
+                cls = LGBMClassifier(
+                    force_col_wise=True,
+                    objective='binary',
+                    class_weight='balanced',
+                    is_unbalance=True,
+                    seed=0
+                    )
+                
+            fitted_classifier = cls.fit(self.X_train, self.y_train_binary)
+            y_pred_binary = fitted_classifier.predict(self.X_valid)
+            print(f"    ##{self.classifier_name}##")
+            print("accuracy : ", accuracy_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
+            print("f1 : ", f1_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
+            print("precision : ", precision_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
+            print("recall : ", recall_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
             
-        classifier.fit(self.X_train, self.y_train_binary)
-        y_pred_binary = classifier.predict(self.X_valid)
-        print(f"    ##{self.classifier_name}##")
-        print("accuracy : ", accuracy_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
-        print("f1 : ", f1_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
-        print("precision : ", precision_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
-        print("recall : ", recall_score(y_true=self.y_valid_binary, y_pred=y_pred_binary))
+            return fitted_classifier
+    
+def output_index(df:pd.Series, classifier:object=None):
+    if classifier is not None:
+        binary_target_pred = pd.Series(classifier.predict(df))
+        print("Length of None Zero Target : ", sum(binary_target_pred))
         
-        return classifier
-    
-def output_index(classifier:object, df:pd.Series):
-    binary_target_pred = pd.Series(classifier.predict(df))
-    print("Length of None Zero Target : ", sum(binary_target_pred))
-    
-    none_zero_index = binary_target_pred.loc[binary_target_pred != 0].index
-    
-    return none_zero_index       
+        none_zero_index = binary_target_pred.loc[binary_target_pred != 0].index
+        
+        return none_zero_index       
     
 
 class RegressionModel:
@@ -221,7 +225,7 @@ class OptunaProcessor:
             'metric' : 'l1', 
             'verbose' : -1     
         }
-                
+       
         model = lgb.LGBMRegressor(**params)
         model = model.fit(
             self.X_train, 
@@ -230,26 +234,26 @@ class OptunaProcessor:
             )
                 
         # 모델 성능 확인
-        score = mean_absolute_error(model.predict(self.X_valid), self.y_valid)
+        score = mean_absolute_error(after_process(model.predict(self.X_valid)), self.y_valid)
         
         return score
 
     def objective_randomforest(self, trial: Trial):
         params = {
-            'n_estimators' : trial.suggest_int('n_estimators', 100, 1000),
+            'n_estimators' : trial.suggest_int('n_estimators', 100, 10000), ## (100, 10000)
             'criterion' : "absolute_error",
             'max_depth' : trial.suggest_int('max_depth', 1, 10), 
             'min_samples_split' : trial.suggest_int('min_samples_split', 2, 30), 
-            'min_samples_leaf' : trial.suggest_int('min_samples_leaf', 1, 30),
+            'min_samples_leaf' : trial.suggest_int('min_samples_leaf', 1, 100),
             'random_state' : 0,
             'verbose' : False,
-            'max_samples' : trial.suggest_int('max_samples', 3, 100)
+            'max_samples' : trial.suggest_int('max_samples', 3, 1000)
         }
                     
         model = RandomForestRegressor(**params)
         model.fit(self.X_train, self.y_train)
 
-        score = mean_absolute_error(model.predict(self.X_valid), self.y_valid)
+        score = mean_absolute_error(after_process(model.predict(self.X_valid)), self.y_valid)
 
         return score
     
@@ -283,8 +287,8 @@ class OptunaProcessor:
             'eta' : trial.suggest_loguniform('eta', 0.03, 0.9),
             'gamma' : trial.suggest_int('gamma', 0, 1000), 
             'max_depth' : trial.suggest_int('max_depth', 1, 10), 
-            'min_child_weight' : trial.suggest_int('min_child_weight', 0, 100), 
-            'max_delta_step' : trial.suggest_int('max_delta_step', 1, 10), 
+            'min_child_weight' : trial.suggest_int('min_child_weight', 0, 500), # 0,500 
+            'max_delta_step' : trial.suggest_int('max_delta_step', 1, 50), # 1, 50
             'subsample' : trial.suggest_loguniform('subsample', 0.03, 0.5), 
             'colsample_bytree' : trial.suggest_loguniform('colsample_bytree', 0.0001, 1), 
             # 'colsample_bylevel' : trial.suggest_loguniform('colsample_bylevel', 0.0001, 1), 
@@ -297,7 +301,7 @@ class OptunaProcessor:
             'eval_metric' : 'mae', 
             'seed' : 0, 
             'num_round' : trial.suggest_int('num_round', 100, 1000), 
-            'n_estimaters' : trial.suggest_int('n_estimaters', 100, 1000), 
+            'n_estimaters' : trial.suggest_int('n_estimaters', 100, 10000), # 100, 10000
             'enable_categorical' : True,
             'tree_method' : 'hist'
          }
@@ -315,6 +319,6 @@ class OptunaProcessor:
             early_stopping_rounds=100, 
             )
         
-        score = mean_absolute_error(model.predict(self.X_valid), self.y_valid)
+        score = mean_absolute_error(after_process(model.predict(self.X_valid)), self.y_valid)
 
         return score
