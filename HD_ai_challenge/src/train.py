@@ -9,7 +9,7 @@ def train(args):
     ## load data set
     X_train, y_train, X_valid, y_valid = load_dataset(mode='train')
     categorical_feature = ['ARI_CO', 'ARI_PO', 'SHIP_TYPE_CATEGORY', 'ID', 'SHIPMANAGER', 'FLAG', 'BREADTH', 'DEPTH', 'DRAUGHT', 'year']
-    minmaxscale_feature = ['DIST', 'BUILT', 'DEADWEIGHT', 'GT', 'LENGTH', 'DUBAI', 'BRENT', 'WTI', 'BDI_ADJ', 'PORT_SIZE']
+    minmaxscale_feature = ['DIST', 'BUILT', 'DEADWEIGHT', 'GT', 'LENGTH', 'PORT_SIZE']
     
     ## preprocess data set
     preprocessing = PreProcessor(categorical_feature=categorical_feature, minmaxscale_feature=minmaxscale_feature)
@@ -127,9 +127,9 @@ if __name__ == "__main__":
     parser.add_argument("--pickle_path", "-pp", type=str, default="../pickle", help="path of pickle folder")
     parser.add_argument("--version", "-v", type=str, default="test_version", help="version number")
     parser.add_argument("--method", "-md", type=str, default="test_method", help="describe method")
-    parser.add_argument("--classification_method", "-c", type=str, default='False', help="boolean of classification method")
+    parser.add_argument("--classification_method", "-c", type=lambda x:(True if x=='True' else False), default=False, help="boolean of classification method")
     parser.add_argument("--classification_model_name", "-cm", type=str, default=None, help="select classification model")
-    parser.add_argument("--log_transform", "-l", type=str, default='False', help="boolean of log transform")
+    parser.add_argument("--log_transform", "-l", type=lambda x:(True if x=='True' else False), default=False, help="boolean of log transform")
     parser.add_argument("--mode", "-m", type=str, default="", help="progress optuna")
     parser.add_argument("--n_trials", "-n", type=int, default=2, help="set number of trials")
     parser.add_argument("--regression_model_name", "-rm", type=str, default="lightgbm", help="select regression model")
