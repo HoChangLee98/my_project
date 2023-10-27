@@ -210,7 +210,7 @@ class OptunaProcessor:
     def objective_lightgbm(self, trial: Trial):
         params = {
             'num_iteration' : trial.suggest_int('num_iteration', 100, 1000),
-            'learning_rate' : trial.suggest_loguniform('learning_rate', 0.03, 0.9),
+            'learning_rate' : trial.suggest_loguniform('learning_rate', 0.01, 0.9),
             'num_leaves' : trial.suggest_int('num_leaves', 2, 100),
             # 'nthread' : -1,
             'seed' : 0,
@@ -218,8 +218,8 @@ class OptunaProcessor:
             'max_depth' : trial.suggest_int('max_depth', 1, 10),
             'min_data_in_leaf' : trial.suggest_int('min_data_in_leaf', 1, 300),
             'early_stopping_round' : 100,
-            'lambda_l1' : trial.suggest_loguniform('lambda_l1', 0.0001, 10),
-            'lambda_l2' : trial.suggest_loguniform('lambda_l2', 0.0001, 10),
+            # 'lambda_l1' : trial.suggest_loguniform('lambda_l1', 0.0001, 10),
+            # 'lambda_l2' : trial.suggest_loguniform('lambda_l2', 0.0001, 10),
             'categorical_feature' : self.categorical_feature,
             'objective' : 'regression_l1',
             'metric' : 'l1', 
@@ -284,13 +284,13 @@ class OptunaProcessor:
             # 'num_boost_round' : trial.suggest_int('num_boost_round', 100, 1000), 
             # 'booster' : 'gblinear', 
             'verbosity' : 0,
-            'eta' : trial.suggest_loguniform('eta', 0.03, 0.9),
-            'gamma' : trial.suggest_int('gamma', 0, 1000), 
-            'max_depth' : trial.suggest_int('max_depth', 1, 10), 
-            'min_child_weight' : trial.suggest_int('min_child_weight', 0, 500), # 0,500 
-            'max_delta_step' : trial.suggest_int('max_delta_step', 1, 50), # 1, 50
-            'subsample' : trial.suggest_loguniform('subsample', 0.03, 0.5), 
-            'colsample_bytree' : trial.suggest_loguniform('colsample_bytree', 0.0001, 1), 
+            'eta' : trial.suggest_loguniform('eta', 0.01, 0.9),
+            'gamma' : trial.suggest_float('gamma', 0, 10), 
+            'max_depth' : trial.suggest_int('max_depth', 1, 100), 
+            'min_child_weight' : trial.suggest_loguniform('min_child_weight', 0.5, 1), # 0,500 
+            # 'max_delta_step' : trial.suggest_int('max_delta_step', 1, 50), # 1, 50
+            # 'subsample' : trial.suggest_loguniform('subsample', 0.03, 0.5), 
+            'colsample_bytree' : trial.suggest_loguniform('colsample_bytree', 0.5, 1), 
             # 'colsample_bylevel' : trial.suggest_loguniform('colsample_bylevel', 0.0001, 1), 
             # 'colsample_bynode' : trial.suggest_loguniform('colsample_bynode', 0.0001, 1),   
             'lambda' : trial.suggest_float('lambda', 0.0, 10.0),
@@ -300,8 +300,8 @@ class OptunaProcessor:
             'objective' : 'reg:absoluteerror', 
             'eval_metric' : 'mae', 
             'seed' : 0, 
-            'num_round' : trial.suggest_int('num_round', 100, 1000), 
-            'n_estimaters' : trial.suggest_int('n_estimaters', 100, 10000), # 100, 10000
+            # 'num_round' : trial.suggest_int('num_round', 100, 1000), 
+            'n_estimaters' : trial.suggest_int('n_estimaters', 100, 1000), # 100, 10000
             'enable_categorical' : True,
             'tree_method' : 'hist'
          }
