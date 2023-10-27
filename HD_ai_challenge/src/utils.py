@@ -49,13 +49,23 @@ def load_pickle(file_name:str, path:str):
 
     return file
 
-def generate_submission_file(y_pred_none_zero, none_zero_index, file_name:str, path:str):
+def generate_submission_file(y_pred, file_name:str, path:str, classification_method=None, none_zero_index=None):
     
     os.makedirs(f"{path}", exist_ok=True)
     submission = pd.read_csv("../submission/sample_submission.csv")
-    submission['CI_HOUR'] = 0
-    submission.loc[none_zero_index, 'CI_HOUR'] = y_pred_none_zero
+    if classification_method == 'True':
+        submission['CI_HOUR'] = 0
+        submission.loc[none_zero_index, 'CI_HOUR'] = y_pred
+    else: 
+        submission['CI_HOUR'] = y_pred
+
     submission.to_csv(f"{path}/{file_name}.csv", index=False) 
     
     print(submission)
     print("Done Generating Submission!")
+
+def after_process(y_pred):
+    y_pred = pd.Series(y_pred)
+    y_pred = y_pred.apply(lambda x : 0 if x < 1 else np.round(x, 5))
+    
+    return y_pred.to_numpy() 
