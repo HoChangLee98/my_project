@@ -8,24 +8,18 @@ def load_data(args):
     train = train.drop(columns=["ID"])
     X_test = test.drop(columns=["ID"])
     
-    X_train = train[["timestamp", "item", "corporation", "location"]]
-    y_train_supply = train["supply(kg)"]
-    y_train_price = train["price(원/kg)"]
+    X_train = train[["timestamp", "supply(kg)", "item", "corporation", "location"]]
+    y_train = train[["price(원/kg)", "item", "corporation", "location"]]
     
-        
     X_train.to_csv(f"{args.path}/X_train.csv", index=False)
-    y_train_supply.to_csv(f"{args.path}/y_train_supply.csv", index=False)
-    y_train_price.to_csv(f"{args.path}/y_train_price.csv", index=False)
+    y_train.to_csv(f"{args.path}/y_train.csv", index=False)
     X_test.to_csv(f"{args.path}/X_test.csv", index=False)
     
     print("Head of X train :        ")
     print(X_train.head(1))
     print("---------------------------------------------")
-    print("Head of y train supply : ")
-    print(y_train_supply.head(1))
-    print("---------------------------------------------")
-    print("Head of y train price :  ")
-    print(y_train_price.head(1))
+    print("Head of y train : ")
+    print(y_train.head(1))
     print("---------------------------------------------")
     print("Head of X test :         ")
     print(X_test.head(1))
