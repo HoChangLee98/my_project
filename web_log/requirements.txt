@@ -1,0 +1,7 @@
+conda install pandas
+conda install numpy
+conda install scikit-learn
+conda install seaborn
+conda install matplotlib
+conda install torch
+conda install tqdm
